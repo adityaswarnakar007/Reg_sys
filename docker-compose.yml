@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: secure-auth-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: secure_auth_db
+
+  backend:
+    build: ./backend
+    container_name: secure-auth-backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    depends_on:
+      - mongodb
+    env_file:
+      - ./backend/.env
+    environment:
+      MONGODB_URI: mongodb://mongodb:27017/secure_auth_db
+
+  frontend:
+    build: ./frontend
+    container_name: secure-auth-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    environment:
+      REACT_APP_RECAPTCHA_V3_SITE_KEY: ${RECAPTCHA_V3_SITE_KEY:-}
+
+volumes:
+  mongo_data:
