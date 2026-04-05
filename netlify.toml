@@ -1,0 +1,11 @@
+# Netlify: build the Create React App in /frontend
+[build]
+  base = "frontend"
+  command = "npm run build"
+  publish = "build"
+
+# Client-side routing (same rule as public/_redirects; kept for clarity)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
