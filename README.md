@@ -80,6 +80,8 @@ Edit `frontend/.env`:
 
 ```env
 REACT_APP_RECAPTCHA_V3_SITE_KEY=your_recaptcha_v3_site_key
+# Optional when frontend and backend are hosted separately
+REACT_APP_API_BASE_URL=https://your-backend-domain.com/api
 ```
 
 Edit `backend/.env`:

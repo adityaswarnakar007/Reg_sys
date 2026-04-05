@@ -1,7 +1,8 @@
 import axios from 'axios';
 
+const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || '/api';
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: apiBaseUrl,
   withCredentials: true,
   headers: { 'Content-Type': 'application/json' }
 });
@@ -21,7 +22,8 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && error.response?.data?.code === 'TOKEN_EXPIRED' && !originalRequest._retry) {
       originalRequest._retry = true;
       try {
-        const { data } = await axios.post('/api/auth/refresh-token', {}, { withCredentials: true });
+        const refreshUrl = `${apiBaseUrl.replace(/\/$/, '')}/auth/refresh-token`;
+        const { data } = await axios.post(refreshUrl, {}, { withCredentials: true });
         localStorage.setItem('accessToken', data.accessToken);
         originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
         return api(originalRequest);
