@@ -45,7 +45,7 @@ app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(cookieParser());
 
 // CORS
-const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:3000')
+const allowedOrigins = (process.env.CLIENT_URL || 'https://securesys.netlify.app')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
