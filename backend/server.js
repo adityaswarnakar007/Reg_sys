@@ -77,6 +77,11 @@ app.use(hpp());
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 
+// Health check route
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'OK', message: 'Server is running' });
+});
+
 // Global error handler
 app.use((err, req, res, next) => {
   console.error(err.stack);

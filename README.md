@@ -84,6 +84,8 @@ REACT_APP_RECAPTCHA_V3_SITE_KEY=your_recaptcha_v3_site_key
 REACT_APP_API_BASE_URL=https://your-backend-domain.com/api
 ```
 
+If you deploy the frontend on Netlify and the backend elsewhere, set `REACT_APP_API_BASE_URL` to your backend URL before building.
+
 Edit `backend/.env`:
 
 ```env
@@ -103,6 +105,52 @@ RECAPTCHA_V3_SECRET_KEY=your_recaptcha_v3_secret_key
 1. Enable 2FA on your Google account
 2. Go to Security → App Passwords
 3. Generate a password for "Mail"
+
+### 3. Deploy the backend
+
+Your backend is a Node.js/Express app in `backend/`. It is ready for deployment and includes:
+
+- `backend/server.js` — entry point
+- `backend/package.json` — start script and dependencies
+- `backend/Dockerfile` — Docker-ready container
+- `backend/Procfile` — deploy helper for Heroku and similar hosts
+
+#### Recommended deployment flow
+
+1. Deploy the backend to a hosting service such as Render, Railway, Heroku, or a VPS.
+2. Use the deployed backend URL as your API host, for example:
+
+```env
+REACT_APP_API_BASE_URL=https://your-backend-host.com/api
+```
+
+3. Set `CLIENT_URL=https://securesys.netlify.app` in your backend deployment environment so CORS allows requests from your frontend.
+4. Configure `RECAPTCHA_V3_SECRET_KEY` in the backend deployment environment.
+
+#### Example Render setup
+
+- Service type: Web Service
+- Branch: `main`
+- Root directory: `backend`
+- Build command: `npm install`
+- Start command: `npm start`
+- Environment variables:
+  - `MONGODB_URI`
+  - `JWT_SECRET`
+  - `JWT_REFRESH_SECRET`
+  - `EMAIL_HOST`
+  - `EMAIL_PORT`
+  - `EMAIL_USER`
+  - `EMAIL_PASS`
+  - `CLIENT_URL=https://securesys.netlify.app`
+  - `RECAPTCHA_V3_SECRET_KEY`
+
+#### Example Railway setup
+
+- Connect your GitHub repo
+- Select the `backend` folder as the project root
+- Set the same environment variables
+- Use the generated backend URL for `REACT_APP_API_BASE_URL`
 
 
 ## 🐳 Docker Setup (One Command)
