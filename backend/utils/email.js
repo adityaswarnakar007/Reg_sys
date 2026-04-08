@@ -1,13 +1,23 @@
 const nodemailer = require('nodemailer');
 
+const emailPort = parseInt(process.env.EMAIL_PORT, 10) || 465;
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST,
-  port: parseInt(process.env.EMAIL_PORT),
-  secure: true, // Use SSL for Gmail
+  port: emailPort,
+  secure: emailPort === 465,
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
+  },
+  tls: {
+    rejectUnauthorized: false
   }
+});
+
+transporter.verify().then(() => {
+  console.log('Email transporter is ready');
+}).catch((error) => {
+  console.error('Email transporter verification failed:', error);
 });
 
 const sendOTPEmail = async (email, otp, purpose) => {
