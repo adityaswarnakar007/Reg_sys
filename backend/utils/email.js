@@ -4,6 +4,7 @@ const smtpHost = process.env.EMAIL_HOST || 'smtp.gmail.com';
 const smtpUser = process.env.EMAIL_USER;
 const smtpPass = process.env.EMAIL_PASS;
 const fromAddress = process.env.EMAIL_FROM || smtpUser;
+const enableFallback = process.env.EMAIL_ENABLE_FALLBACK === 'true';
 
 const createTransporter = (port) => {
   const secure = port === 465;
@@ -19,9 +20,10 @@ const createTransporter = (port) => {
     tls: {
       rejectUnauthorized: false
     },
-    connectionTimeout: 20000,
-    greetingTimeout: 20000,
-    socketTimeout: 20000,
+    // Fail fast on cloud hosts where SMTP is blocked to avoid request timeouts.
+    connectionTimeout: 8000,
+    greetingTimeout: 8000,
+    socketTimeout: 8000,
     logger: true,
     debug: process.env.NODE_ENV === 'development'
   });
@@ -96,6 +98,13 @@ const sendOTPEmail = async (email, otp, purpose) => {
   try {
     return await sendUsingTransporter(primaryTransporter, configuredPort);
   } catch (primaryError) {
+    if (!enableFallback) {
+      throw new Error(
+        `Email sending failed on SMTP port ${configuredPort}: ${primaryError.message}. ` +
+        'Set EMAIL_ENABLE_FALLBACK=true to also try the alternate port.'
+      );
+    }
+
     console.error('[EMAIL] Primary SMTP failed, trying fallback...');
     try {
       return await sendUsingTransporter(fallbackTransporter, alternatePort);

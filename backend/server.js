@@ -50,9 +50,12 @@ const allowedOrigins = (process.env.CLIENT_URL || 'https://securesys.netlify.app
   .map((origin) => origin.trim())
   .filter(Boolean);
 
+const normalizeOrigin = (origin) => origin.replace(/\/$/, '');
+const normalizedAllowedOrigins = allowedOrigins.map(normalizeOrigin);
+
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin || normalizedAllowedOrigins.includes(normalizeOrigin(origin))) {
       return callback(null, true);
     }
     callback(new Error(`CORS origin not allowed: ${origin}`));
