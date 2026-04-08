@@ -91,6 +91,34 @@ body {
   color: #555577;
 }
 
+.password-field {
+  position: relative;
+}
+
+.password-field input {
+  padding-right: 72px;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: #c7c9ff;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.password-toggle:hover {
+  border-color: #6366f1;
+  color: #ffffff;
+}
+
 /* Password strength meter */
 .strength-meter {
   margin-top: 8px;

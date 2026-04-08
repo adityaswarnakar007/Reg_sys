@@ -14,6 +14,7 @@ const Register = () => {
   const [form, setForm] = useState({ username: '', email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const executeRecaptcha = useReCaptchaV3();
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
@@ -72,7 +73,24 @@ const Register = () => {
 
           <div className="form-group">
             <label>Password</label>
-            <input name="password" type="password" value={form.password} onChange={handleChange} placeholder="Create a strong password" required />
+            <div className="password-field">
+              <input
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                value={form.password}
+                onChange={handleChange}
+                placeholder="Create a strong password"
+                required
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? 'Hide' : 'Show'}
+              </button>
+            </div>
             <PasswordStrengthMeter password={form.password} username={form.username} />
           </div>
 

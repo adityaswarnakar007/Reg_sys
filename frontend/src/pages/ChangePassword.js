@@ -10,6 +10,9 @@ const ChangePassword = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
@@ -47,16 +50,49 @@ const ChangePassword = () => {
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label>Current Password</label>
-            <input name="currentPassword" type="password" value={form.currentPassword} onChange={handleChange} required />
+            <div className="password-field">
+              <input
+                name="currentPassword"
+                type={showCurrentPassword ? 'text' : 'password'}
+                value={form.currentPassword}
+                onChange={handleChange}
+                required
+              />
+              <button type="button" className="password-toggle" onClick={() => setShowCurrentPassword((v) => !v)}>
+                {showCurrentPassword ? 'Hide' : 'Show'}
+              </button>
+            </div>
           </div>
           <div className="form-group">
             <label>New Password</label>
-            <input name="newPassword" type="password" value={form.newPassword} onChange={handleChange} required />
+            <div className="password-field">
+              <input
+                name="newPassword"
+                type={showNewPassword ? 'text' : 'password'}
+                value={form.newPassword}
+                onChange={handleChange}
+                required
+              />
+              <button type="button" className="password-toggle" onClick={() => setShowNewPassword((v) => !v)}>
+                {showNewPassword ? 'Hide' : 'Show'}
+              </button>
+            </div>
             <PasswordStrengthMeter password={form.newPassword} />
           </div>
           <div className="form-group">
             <label>Confirm New Password</label>
-            <input name="confirmPassword" type="password" value={form.confirmPassword} onChange={handleChange} required />
+            <div className="password-field">
+              <input
+                name="confirmPassword"
+                type={showConfirmPassword ? 'text' : 'password'}
+                value={form.confirmPassword}
+                onChange={handleChange}
+                required
+              />
+              <button type="button" className="password-toggle" onClick={() => setShowConfirmPassword((v) => !v)}>
+                {showConfirmPassword ? 'Hide' : 'Show'}
+              </button>
+            </div>
           </div>
           <button type="submit" className="btn-primary" disabled={loading}>
             {loading ? 'Updating...' : 'Update Password'}

@@ -17,6 +17,8 @@ const ResetPassword = () => {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   if (!email) {
     navigate('/forgot-password');
@@ -91,29 +93,39 @@ const ResetPassword = () => {
 
           <div className="form-group">
             <label>New password</label>
-            <input
-              name="newPassword"
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Create a strong password"
-              required
-              autoComplete="new-password"
-            />
+            <div className="password-field">
+              <input
+                name="newPassword"
+                type={showNewPassword ? 'text' : 'password'}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Create a strong password"
+                required
+                autoComplete="new-password"
+              />
+              <button type="button" className="password-toggle" onClick={() => setShowNewPassword((v) => !v)}>
+                {showNewPassword ? 'Hide' : 'Show'}
+              </button>
+            </div>
             <PasswordStrengthMeter password={newPassword} username="" />
           </div>
 
           <div className="form-group">
             <label>Confirm New Password</label>
-            <input
-              name="confirmPassword"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Confirm password"
-              required
-              autoComplete="new-password"
-            />
+            <div className="password-field">
+              <input
+                name="confirmPassword"
+                type={showConfirmPassword ? 'text' : 'password'}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm password"
+                required
+                autoComplete="new-password"
+              />
+              <button type="button" className="password-toggle" onClick={() => setShowConfirmPassword((v) => !v)}>
+                {showConfirmPassword ? 'Hide' : 'Show'}
+              </button>
+            </div>
           </div>
 
           <button type="submit" className="btn-primary" disabled={loading || otp.length !== 6}>

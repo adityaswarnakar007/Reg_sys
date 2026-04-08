@@ -12,6 +12,7 @@ const Login = () => {
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const executeRecaptcha = useReCaptchaV3();
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
@@ -63,7 +64,24 @@ const Login = () => {
 
           <div className="form-group">
             <label>Password</label>
-            <input name="password" type="password" value={form.password} onChange={handleChange} placeholder="Enter your password" required />
+            <div className="password-field">
+              <input
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                value={form.password}
+                onChange={handleChange}
+                placeholder="Enter your password"
+                required
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? 'Hide' : 'Show'}
+              </button>
+            </div>
             <div className="auth-link" style={{ marginTop: 8, textAlign: 'right' }}>
               <Link to="/forgot-password">Forgot password?</Link>
             </div>
