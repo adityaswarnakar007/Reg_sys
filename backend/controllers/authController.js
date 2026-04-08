@@ -8,6 +8,9 @@ const LoginActivity = require('../models/LoginActivity');
 const { sendOTPEmail } = require('../utils/email');
 const { generateAccessToken, generateRefreshToken, verifyRefreshToken } = require('../utils/tokens');
 
+const isEmailDeliveryRequired = () => process.env.EMAIL_DELIVERY_REQUIRED !== 'false';
+const isOtpDebugEnabled = () => process.env.OTP_DEBUG_IN_RESPONSE === 'true';
+
 const getClientInfo = (req) => {
   const parser = new UAParser(req.headers['user-agent']);
   const result = parser.getResult();
@@ -45,10 +48,17 @@ exports.forgotPassword = async (req, res) => {
 
     await OTP.deleteMany({ email: user.email, purpose: 'password_reset' });
     await OTP.create({ email: user.email, otp: hashedOTP, purpose: 'password_reset' });
-    await sendOTPEmail(user.email, otp, 'password_reset');
+    try {
+      await sendOTPEmail(user.email, otp, 'password_reset');
+    } catch (emailError) {
+      console.error(`[FORGOT-PASSWORD] Failed to send OTP email to ${user.email}:`, emailError.message);
+      if (isEmailDeliveryRequired()) throw emailError;
+    }
     await logActivity(user._id, 'password_reset_request', req);
-
-    res.json({ message: genericMessage });
+    res.json({
+      message: genericMessage,
+      ...(isOtpDebugEnabled() ? { otpDebug: otp } : {})
+    });
   } catch (error) {
     console.error('Forgot password error:', error);
     res.status(500).json({ error: 'Failed to process request' });
@@ -154,21 +164,30 @@ exports.register = async (req, res) => {
     await OTP.deleteMany({ email, purpose: 'registration' });
     await OTP.create({ email, otp: hashedOTP, purpose: 'registration' });
     
+    let emailFailed = false;
+    let emailErrorMessage = '';
     try {
       await sendOTPEmail(email, otp, 'registration');
       console.log(`[REGISTER] OTP email sent successfully to ${email}`);
     } catch (emailError) {
-      console.error(`[REGISTER] Failed to send OTP email to ${email}:`, emailError.message);
-      // Even if email fails, account is created - user can resend
-      return res.status(500).json({ 
-        error: `Registration created but email sending failed: ${emailError.message}. Please check your email configuration.`,
-        userId: user._id 
-      });
+      emailFailed = true;
+      emailErrorMessage = emailError.message;
+      console.error(`[REGISTER] Failed to send OTP email to ${email}:`, emailErrorMessage);
+      if (isEmailDeliveryRequired()) {
+        return res.status(500).json({
+          error: `Registration created but email sending failed: ${emailErrorMessage}. Please check your email configuration.`,
+          userId: user._id
+        });
+      }
     }
 
     res.status(201).json({
-      message: 'Registration successful. Please verify your email with the OTP sent.',
-      userId: user._id
+      message: emailFailed
+        ? 'Registration successful, but OTP email delivery failed. Use resend OTP or contact support.'
+        : 'Registration successful. Please verify your email with the OTP sent.',
+      userId: user._id,
+      ...(emailFailed ? { emailDeliveryFailed: true, emailError: emailErrorMessage } : {}),
+      ...(isOtpDebugEnabled() ? { otpDebug: otp } : {})
     });
   } catch (error) {
     console.error('[REGISTER] Registration error:', error.message);
@@ -318,11 +337,27 @@ exports.login = async (req, res) => {
 
     await OTP.deleteMany({ email, purpose: 'login' });
     await OTP.create({ email, otp: hashedOTP, purpose: 'login' });
-    await sendOTPEmail(email, otp, 'login');
+    let emailFailed = false;
+    let emailErrorMessage = '';
+    try {
+      await sendOTPEmail(email, otp, 'login');
+    } catch (emailError) {
+      emailFailed = true;
+      emailErrorMessage = emailError.message;
+      console.error(`[LOGIN] Failed to send OTP email to ${email}:`, emailErrorMessage);
+      if (isEmailDeliveryRequired()) throw emailError;
+    }
 
     await logActivity(user._id, 'login_success', req, 'OTP sent for 2FA');
 
-    res.json({ message: 'OTP sent to your email for verification', requireOTP: true });
+    res.json({
+      message: emailFailed
+        ? 'OTP generated but email delivery failed. Use resend OTP or contact support.'
+        : 'OTP sent to your email for verification',
+      requireOTP: true,
+      ...(emailFailed ? { emailDeliveryFailed: true, emailError: emailErrorMessage } : {}),
+      ...(isOtpDebugEnabled() ? { otpDebug: otp } : {})
+    });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Login failed' });
@@ -350,10 +385,18 @@ exports.resendOTP = async (req, res) => {
     try {
       await sendOTPEmail(email, otp, purpose);
       console.log(`[RESEND-OTP] OTP email sent successfully to ${email} for ${purpose}`);
-      res.json({ message: 'New OTP sent successfully' });
+      res.json({ message: 'New OTP sent successfully', ...(isOtpDebugEnabled() ? { otpDebug: otp } : {}) });
     } catch (emailError) {
       console.error(`[RESEND-OTP] Failed to send OTP email to ${email}:`, emailError.message);
-      res.status(500).json({ error: `Failed to send OTP: ${emailError.message}` });
+      if (isEmailDeliveryRequired()) {
+        return res.status(500).json({ error: `Failed to send OTP: ${emailError.message}` });
+      }
+      res.json({
+        message: 'OTP regenerated but email delivery failed.',
+        emailDeliveryFailed: true,
+        emailError: emailError.message,
+        ...(isOtpDebugEnabled() ? { otpDebug: otp } : {})
+      });
     }
   } catch (error) {
     console.error('[RESEND-OTP] Error:', error.message);
