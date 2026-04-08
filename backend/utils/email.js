@@ -1,12 +1,10 @@
 const nodemailer = require('nodemailer');
-const axios = require('axios');
 
 const smtpHost = process.env.EMAIL_HOST || 'smtp.gmail.com';
 const smtpUser = process.env.EMAIL_USER;
 const smtpPass = process.env.EMAIL_PASS;
 const fromAddress = process.env.EMAIL_FROM || smtpUser;
 const enableFallback = process.env.EMAIL_ENABLE_FALLBACK === 'true';
-const resendApiKey = process.env.RESEND_API_KEY;
 
 const createTransporter = (port) => {
   const secure = port === 465;
@@ -48,11 +46,6 @@ const verifyTransporter = async (transporter, port) => {
 };
 
 (async () => {
-  if (resendApiKey) {
-    console.log('[EMAIL] RESEND_API_KEY detected. Using Resend API as primary mail provider.');
-    return;
-  }
-
   const primaryOk = await verifyTransporter(primaryTransporter, configuredPort);
   if (!primaryOk) {
     const fallbackOk = await verifyTransporter(fallbackTransporter, alternatePort);
@@ -101,37 +94,6 @@ const sendOTPEmail = async (email, otp, purpose) => {
       throw error;
     }
   };
-
-  const sendWithResend = async () => {
-    if (!resendApiKey) return null;
-
-    console.log(`[EMAIL] Sending ${purpose} OTP to ${email} via Resend API`);
-    const response = await axios.post(
-      'https://api.resend.com/emails',
-      {
-        from: fromAddress,
-        to: [email],
-        subject: mailOptions.subject,
-        html: mailOptions.html
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${resendApiKey}`,
-          'Content-Type': 'application/json'
-        },
-        timeout: 15000
-      }
-    );
-    console.log(`[EMAIL] OTP email sent via Resend API. id=${response.data?.id || 'n/a'}`);
-    return response.data;
-  };
-
-  try {
-    const resendResult = await sendWithResend();
-    if (resendResult) return resendResult;
-  } catch (resendError) {
-    console.error('[EMAIL] Resend API failed, falling back to SMTP:', resendError.response?.data || resendError.message);
-  }
 
   try {
     return await sendUsingTransporter(primaryTransporter, configuredPort);
