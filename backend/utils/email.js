@@ -1,32 +1,30 @@
 const nodemailer = require('nodemailer');
-const sgMail = require('@sendgrid/mail');
 
-// Initialize SendGrid if API key is provided
-if (process.env.SENDGRID_API_KEY) {
-  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-  console.log('SendGrid initialized');
-}
+// Gmail SMTP configuration
+const emailPort = parseInt(process.env.EMAIL_PORT, 10) || 465;
+const isSSL = emailPort === 465;
 
-// Fallback to nodemailer with Gmail
-const emailPort = parseInt(process.env.EMAIL_PORT, 10) || 587;
 const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST,
+  host: process.env.EMAIL_HOST || 'smtp.gmail.com',
   port: emailPort,
-  secure: emailPort === 465,
+  secure: isSSL, // true for 465, false for other ports
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
   },
-  tls: {
-    rejectUnauthorized: false
-  }
+  connectionTimeout: 5000,
+  socketTimeout: 5000,
+  logger: true,
+  debug: process.env.NODE_ENV === 'development'
 });
 
-// Verify nodemailer connection
-transporter.verify().then(() => {
-  console.log('Nodemailer transporter is ready');
-}).catch((error) => {
-  console.error('Nodemailer transporter verification failed:', error.message);
+// Verify connection on startup
+transporter.verify((error, success) => {
+  if (error) {
+    console.error('[EMAIL] SMTP connection failed:', error.message);
+  } else {
+    console.log('[EMAIL] Gmail SMTP connection verified');
+  }
 });
 
 const sendOTPEmail = async (email, otp, purpose) => {
@@ -48,26 +46,6 @@ const sendOTPEmail = async (email, otp, purpose) => {
     </div>
   `;
 
-  // Try SendGrid first if available
-  if (process.env.SENDGRID_API_KEY) {
-    try {
-      const msg = {
-        to: email,
-        from: process.env.EMAIL_USER || 'noreply@regsys.com',
-        subject: subjects[purpose] || 'Your OTP Code',
-        html: htmlContent,
-      };
-
-      const result = await sgMail.send(msg);
-      console.log(`[SENDGRID] OTP email sent successfully for ${purpose} to ${email}`);
-      return result;
-    } catch (sendgridError) {
-      console.error(`[SENDGRID] Failed to send OTP email to ${email}:`, sendgridError.message);
-      // Fall back to nodemailer
-    }
-  }
-
-  // Fallback to nodemailer
   const mailOptions = {
     from: `"Secure Auth System" <${process.env.EMAIL_USER}>`,
     to: email,
@@ -76,11 +54,12 @@ const sendOTPEmail = async (email, otp, purpose) => {
   };
 
   try {
+    console.log(`[EMAIL] Sending ${purpose} OTP to ${email}...`);
     const info = await transporter.sendMail(mailOptions);
-    console.log(`[NODEMAILER] OTP email sent successfully for ${purpose} to ${email}:`, info.response);
+    console.log(`[EMAIL] OTP email sent successfully for ${purpose} to ${email}. MessageID: ${info.messageId}`);
     return info;
   } catch (error) {
-    console.error(`[NODEMAILER] Failed to send OTP email for ${purpose} to ${email}:`, error.message);
+    console.error(`[EMAIL] Failed to send OTP email for ${purpose} to ${email}:`, error.message);
     throw new Error(`Email sending failed: ${error.message}`);
   }
 };
