@@ -1,18 +1,19 @@
 const nodemailer = require('nodemailer');
 
-const host = process.env.EMAIL_HOST || 'smtp.gmail.com';
-const user = process.env.EMAIL_USER;
-const pass = process.env.EMAIL_PASS;
+const smtpHost = process.env.EMAIL_HOST || 'smtp.gmail.com';
+const smtpUser = process.env.EMAIL_USER;
+const smtpPass = process.env.EMAIL_PASS;
+const fromAddress = process.env.EMAIL_FROM || smtpUser;
 
 const createTransporter = (port) => {
   const secure = port === 465;
   return nodemailer.createTransport({
-    host,
+    host: smtpHost,
     port,
     secure,
     auth: {
-      user,
-      pass
+      user: smtpUser,
+      pass: smtpPass
     },
     requireTLS: !secure,
     tls: {
@@ -34,7 +35,7 @@ let fallbackTransporter = createTransporter(alternatePort);
 const verifyTransporter = async (transporter, port) => {
   try {
     await transporter.verify();
-    console.log(`[EMAIL] Gmail SMTP connection verified on port ${port}`);
+    console.log(`[EMAIL] SMTP connection verified on port ${port}`);
     return true;
   } catch (error) {
     console.error(`[EMAIL] SMTP connection failed on port ${port}:`, error.message);
@@ -74,7 +75,7 @@ const sendOTPEmail = async (email, otp, purpose) => {
   `;
 
   const mailOptions = {
-    from: `"Secure Auth System" <${user}>`,
+    from: `"Secure Auth System" <${fromAddress}>`,
     to: email,
     subject: subjects[purpose] || 'Your OTP Code',
     html: htmlContent
