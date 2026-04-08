@@ -153,14 +153,25 @@ exports.register = async (req, res) => {
 
     await OTP.deleteMany({ email, purpose: 'registration' });
     await OTP.create({ email, otp: hashedOTP, purpose: 'registration' });
-    await sendOTPEmail(email, otp, 'registration');
+    
+    try {
+      await sendOTPEmail(email, otp, 'registration');
+      console.log(`[REGISTER] OTP email sent successfully to ${email}`);
+    } catch (emailError) {
+      console.error(`[REGISTER] Failed to send OTP email to ${email}:`, emailError.message);
+      // Even if email fails, account is created - user can resend
+      return res.status(500).json({ 
+        error: `Registration created but email sending failed: ${emailError.message}. Please check your email configuration.`,
+        userId: user._id 
+      });
+    }
 
     res.status(201).json({
       message: 'Registration successful. Please verify your email with the OTP sent.',
       userId: user._id
     });
   } catch (error) {
-    console.error('Registration error:', error);
+    console.error('[REGISTER] Registration error:', error.message);
     res.status(500).json({ error: 'Registration failed. Please try again.' });
   }
 };
@@ -335,11 +346,17 @@ exports.resendOTP = async (req, res) => {
 
     await OTP.deleteMany({ email, purpose });
     await OTP.create({ email, otp: hashedOTP, purpose });
-    await sendOTPEmail(email, otp, purpose);
-
-    res.json({ message: 'New OTP sent successfully' });
+    
+    try {
+      await sendOTPEmail(email, otp, purpose);
+      console.log(`[RESEND-OTP] OTP email sent successfully to ${email} for ${purpose}`);
+      res.json({ message: 'New OTP sent successfully' });
+    } catch (emailError) {
+      console.error(`[RESEND-OTP] Failed to send OTP email to ${email}:`, emailError.message);
+      res.status(500).json({ error: `Failed to send OTP: ${emailError.message}` });
+    }
   } catch (error) {
-    console.error('Resend OTP error:', error);
+    console.error('[RESEND-OTP] Error:', error.message);
     res.status(500).json({ error: 'Failed to resend OTP' });
   }
 };
