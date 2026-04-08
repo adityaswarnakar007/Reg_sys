@@ -1,31 +1,58 @@
 const nodemailer = require('nodemailer');
 
-// Gmail SMTP configuration
-const emailPort = parseInt(process.env.EMAIL_PORT, 10) || 465;
-const isSSL = emailPort === 465;
+const host = process.env.EMAIL_HOST || 'smtp.gmail.com';
+const user = process.env.EMAIL_USER;
+const pass = process.env.EMAIL_PASS;
 
-const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-  port: emailPort,
-  secure: isSSL, // true for 465, false for other ports
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  },
-  connectionTimeout: 5000,
-  socketTimeout: 5000,
-  logger: true,
-  debug: process.env.NODE_ENV === 'development'
-});
+const createTransporter = (port) => {
+  const secure = port === 465;
+  return nodemailer.createTransport({
+    host,
+    port,
+    secure,
+    auth: {
+      user,
+      pass
+    },
+    requireTLS: !secure,
+    tls: {
+      rejectUnauthorized: false
+    },
+    connectionTimeout: 20000,
+    greetingTimeout: 20000,
+    socketTimeout: 20000,
+    logger: true,
+    debug: process.env.NODE_ENV === 'development'
+  });
+};
 
-// Verify connection on startup
-transporter.verify((error, success) => {
-  if (error) {
-    console.error('[EMAIL] SMTP connection failed:', error.message);
-  } else {
-    console.log('[EMAIL] Gmail SMTP connection verified');
+const configuredPort = parseInt(process.env.EMAIL_PORT, 10) || 465;
+const alternatePort = configuredPort === 465 ? 587 : 465;
+let primaryTransporter = createTransporter(configuredPort);
+let fallbackTransporter = createTransporter(alternatePort);
+
+const verifyTransporter = async (transporter, port) => {
+  try {
+    await transporter.verify();
+    console.log(`[EMAIL] Gmail SMTP connection verified on port ${port}`);
+    return true;
+  } catch (error) {
+    console.error(`[EMAIL] SMTP connection failed on port ${port}:`, error.message);
+    return false;
   }
-});
+};
+
+(async () => {
+  const primaryOk = await verifyTransporter(primaryTransporter, configuredPort);
+  if (!primaryOk) {
+    const fallbackOk = await verifyTransporter(fallbackTransporter, alternatePort);
+    if (fallbackOk) {
+      primaryTransporter = fallbackTransporter;
+      fallbackTransporter = createTransporter(configuredPort);
+      console.log(`[EMAIL] Switched to fallback SMTP port ${alternatePort}`);
+    }
+  }
+})();
 
 const sendOTPEmail = async (email, otp, purpose) => {
   const subjects = {
@@ -47,20 +74,34 @@ const sendOTPEmail = async (email, otp, purpose) => {
   `;
 
   const mailOptions = {
-    from: `"Secure Auth System" <${process.env.EMAIL_USER}>`,
+    from: `"Secure Auth System" <${user}>`,
     to: email,
     subject: subjects[purpose] || 'Your OTP Code',
     html: htmlContent
   };
 
+  const sendUsingTransporter = async (transporter, portLabel) => {
+    try {
+      console.log(`[EMAIL] Attempting to send ${purpose} OTP to ${email} using port ${portLabel}`);
+      const info = await transporter.sendMail(mailOptions);
+      console.log(`[EMAIL] OTP email sent successfully for ${purpose} to ${email} on port ${portLabel}. MessageID: ${info.messageId}`);
+      return info;
+    } catch (error) {
+      console.error(`[EMAIL] Failed on port ${portLabel}:`, error.message);
+      throw error;
+    }
+  };
+
   try {
-    console.log(`[EMAIL] Sending ${purpose} OTP to ${email}...`);
-    const info = await transporter.sendMail(mailOptions);
-    console.log(`[EMAIL] OTP email sent successfully for ${purpose} to ${email}. MessageID: ${info.messageId}`);
-    return info;
-  } catch (error) {
-    console.error(`[EMAIL] Failed to send OTP email for ${purpose} to ${email}:`, error.message);
-    throw new Error(`Email sending failed: ${error.message}`);
+    return await sendUsingTransporter(primaryTransporter, configuredPort);
+  } catch (primaryError) {
+    console.error('[EMAIL] Primary SMTP failed, trying fallback...');
+    try {
+      return await sendUsingTransporter(fallbackTransporter, alternatePort);
+    } catch (fallbackError) {
+      console.error('[EMAIL] Fallback SMTP also failed.');
+      throw new Error(`Email sending failed on both ports: ${primaryError.message}; ${fallbackError.message}`);
+    }
   }
 };
 
