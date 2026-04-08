@@ -4,6 +4,13 @@
   command = "npm run build"
   publish = "build"
 
+# Proxy frontend /api calls to Render backend
+[[redirects]]
+  from = "/api/*"
+  to = "https://reg-sys.onrender.com/api/:splat"
+  status = 200
+  force = true
+
 # Client-side routing (same rule as public/_redirects; kept for clarity)
 [[redirects]]
   from = "/*"
